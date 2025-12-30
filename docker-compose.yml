@@ -1,0 +1,47 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: blog_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: blogdb
+      POSTGRES_USER: blog
+      POSTGRES_PASSWORD: blog
+    ports:
+      - "5432:5432"
+    volumes:
+      - blog_db_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend/Blog.Api
+    container_name: blog_backend
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=blogdb;Username=blog;Password=blog
+      Jwt__Issuer: Blog
+      Jwt__Audience: Blog
+      Jwt__SigningKey: "super_secret_key_change_me_please_1234567890"
+      Jwt__ExpMinutes: "120"
+      Seed__AdminEmail: "admin@local"
+      Seed__AdminPassword: "Admin123!"
+    ports:
+      - "8080:80"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: "http://localhost:8080/api"
+    container_name: blog_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+
+volumes:
+  blog_db_data:
